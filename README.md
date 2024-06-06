@@ -1,3 +1,5 @@
+For installation
+
 node init:
    npm init -y
 
