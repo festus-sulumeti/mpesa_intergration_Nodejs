@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-//const TokenRouting  = require("../routing/token");
+const TokenRouting  = require("./routing/token");
 
 app.use(express.json());
 
@@ -13,4 +13,4 @@ app.get("/", (req, res) => {
     res.send("Hey karibu mpesa Kenya API Huku backend");
 });
 
-//app.use("/token", TokenRouting);
+app.use("/token", TokenRouting);

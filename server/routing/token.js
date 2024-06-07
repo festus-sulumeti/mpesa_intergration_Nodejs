@@ -1,7 +1,7 @@
 const express = require("express");
 
 const routing = express.Router();
-const { tokenCreation } = require("../darajaspace/token");
+const { tokenCreation, stkPushing } = require("../darajaspace/token");
 
 
 routing.post("/", tokenCreation, stkPushing);
