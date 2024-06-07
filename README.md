@@ -1,3 +1,8 @@
+## The mpesa integration project
+
+The project is meant to create an mpesa integration manual 
+
+
 For installation
 
 node init:
