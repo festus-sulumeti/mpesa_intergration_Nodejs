@@ -60,7 +60,7 @@ const stkPushing = async (req, res) => {
         PartyA: `254${phonenumber}`,
         PartyB: shortcode,
         PhoneNumber: `254${phonenumber}`,
-        CallBackURL: "put the call back url here",
+        CallBackURL: "Your Call back url",
         AccountReference: "Mpesa Test",
         TransactionDesc: "Testing the push of stk push",
     };
