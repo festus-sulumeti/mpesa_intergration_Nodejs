@@ -3,3 +3,6 @@ dist
 data
 .env
 pnpm-debug.log
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

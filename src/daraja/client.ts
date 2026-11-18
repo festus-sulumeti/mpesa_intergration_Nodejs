@@ -4,6 +4,14 @@ import { baseUrl, type DarajaConfig, publicConfig, type PublicDarajaConfig } fro
 import { DarajaError, publicHttpError } from "./errors";
 import { normalizeKenyanPhone } from "./phone";
 import { darajaTimestamp, stkPassword } from "./time";
+import {
+  queryBalance,
+  registerC2bUrls,
+  reverseTransaction,
+  sendB2C,
+  type AcceptedCommand,
+  type RegisteredUrls,
+} from "./products";
 
 export interface HttpClient {
   get<T>(url: string, config: { headers: Record<string, string> }): Promise<{ data: T }>;
@@ -77,6 +85,18 @@ export interface DarajaClient {
   getAccessToken(): Promise<string>;
   stkPush(input: StkPushInput): Promise<StkAccepted>;
   stkQuery(checkoutRequestId: string): Promise<StkQueryResult>;
+  registerC2bUrls(input: {
+    validationUrl?: string;
+    confirmationUrl?: string;
+    responseType?: "Completed" | "Cancelled";
+  }): Promise<RegisteredUrls>;
+  b2c(input: { phone: string; amount: number | string; remarks?: string; occasion?: string }): Promise<
+    AcceptedCommand & { phone: string; amount: number }
+  >;
+  accountBalance(): Promise<AcceptedCommand>;
+  reversal(input: { receipt: string; amount: number | string; remarks?: string }): Promise<
+    AcceptedCommand & { receipt: string; amount: number }
+  >;
 }
 
 export function createDarajaClient(
@@ -202,11 +222,22 @@ export function createDarajaClient(
     }
   }
 
+  const runtime = { config, http, getAccessToken };
+
   return {
     settings: publicConfig(config),
     getAccessToken,
     stkPush,
     stkQuery,
+    registerC2bUrls: (input) =>
+      registerC2bUrls(runtime, {
+        validationUrl: input.validationUrl ?? "",
+        confirmationUrl: input.confirmationUrl ?? "",
+        responseType: input.responseType,
+      }),
+    b2c: (input) => sendB2C(runtime, input),
+    accountBalance: () => queryBalance(runtime),
+    reversal: (input) => reverseTransaction(runtime, input),
   };
 }
 

@@ -3,16 +3,21 @@ import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export type TransactionStatus = "pending" | "success" | "failed" | "cancelled";
+export type TransactionKind = "stk" | "c2b" | "b2c" | "reversal" | "balance";
 
 export interface Transaction {
   id: string;
   idempotencyKey: string;
   phone: string;
+  phoneMasked?: string;
   amount: number;
   accountReference: string;
   transactionDesc: string;
   checkoutRequestId?: string;
   merchantRequestId?: string;
+  conversationId?: string;
+  originatorConversationId?: string;
+  kind?: TransactionKind;
   status: TransactionStatus;
   resultCode?: number;
   resultDesc?: string;
@@ -23,6 +28,7 @@ export interface Transaction {
 export interface TransactionStore {
   insert(tx: Transaction): void;
   findByCheckout(id: string): Transaction | undefined;
+  findByConversation(id: string): Transaction | undefined;
   findByIdempotency(key: string): Transaction | undefined;
   save(tx: Transaction): void;
   list(): Transaction[];
@@ -37,6 +43,11 @@ export function createMemoryStore(seed: Transaction[] = []): TransactionStore {
     },
     findByCheckout(id) {
       return rows.find((row) => row.checkoutRequestId === id);
+    },
+    findByConversation(id) {
+      return rows.find(
+        (row) => row.conversationId === id || row.originatorConversationId === id
+      );
     },
     findByIdempotency(key) {
       return rows.find((row) => row.idempotencyKey === key);
@@ -61,6 +72,7 @@ export function createFileStore(filePath: string): TransactionStore {
       persist();
     },
     findByCheckout: (id) => memory.findByCheckout(id),
+    findByConversation: (id) => memory.findByConversation(id),
     findByIdempotency: (key) => memory.findByIdempotency(key),
     save(tx) {
       memory.save(tx);

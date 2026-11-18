@@ -75,6 +75,37 @@ async function runLocal(input: AgentInput, ctx?: ToolContext): Promise<AgentResu
     };
   }
 
+  if (plan.intent === "reversal") {
+    const receipt = String(plan.steps[0]?.args.receipt ?? "");
+    if (input.confirm !== true) {
+      return {
+        plan,
+        executed: [],
+        needsConfirmation: true,
+        message: {
+          en: `Confirm reversal of ${receipt}. Call again with confirm=true.`,
+          sw: `Thibitisha kurudisha muamala ${receipt}. Tuma tena na confirm=true.`,
+        },
+      };
+    }
+    if (!ctx) throw new DarajaError("A Daraja client is required to reverse a payment", "config", 500);
+    const data = await callTool("reversal", { ...plan.steps[0]?.args, confirm: true }, ctx);
+    return {
+      plan,
+      executed: [data],
+      needsConfirmation: false,
+      message: data.data.replayed
+        ? {
+            en: "This receipt was already reversed and was not sent again.",
+            sw: "Risiti hii ilisharudishwa na haijatumwa tena.",
+          }
+        : {
+            en: "The reversal was submitted.",
+            sw: "Ombi la kurudisha malipo limetumwa.",
+          },
+    };
+  }
+
   if (!ctx) throw new DarajaError("A Daraja client is required for this request", "config", 500);
   const executed = [];
   for (const step of plan.steps) {
