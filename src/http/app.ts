@@ -6,10 +6,13 @@ import { callTool, type ToolContext } from "../agent/tools";
 import { parseC2B } from "../daraja/c2b";
 import type { TransactionType } from "../daraja/client";
 import { DarajaError } from "../daraja/errors";
+import { notifyPaid, type SmsClient } from "../africastalking/sms";
+import { readUssd, ussdResponse, ussdStep } from "../africastalking/ussd";
 import { applyCommandResult, applyStkCallback, recordC2BConfirmation } from "./callbacks";
 
 export interface AppOptions {
   apiKey: string;
+  sms?: SmsClient;
 }
 
 export function createApp(ctx: ToolContext, options: AppOptions): express.Express {
@@ -17,6 +20,7 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
   app.disable("x-powered-by");
   app.use(cors());
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
   const guard = requireApiKey(options.apiKey);
 
   app.get("/", (_req, res) => {
@@ -44,6 +48,7 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
         "POST /reversal",
         "POST /reversal/result",
         "POST /reversal/timeout",
+        "POST /ussd",
       ],
     });
   });
@@ -54,11 +59,12 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
   }));
 
   app.post("/callback", asyncRoute(async (req, res) => {
-    const transaction = applyStkCallback(ctx.store, req.body);
+    const update = applyStkCallback(ctx.store, req.body);
+    if (update.becameSuccess && update.transaction) await notifyPaid(options.sms, update.transaction);
     res.json({
       ResultCode: 0,
       ResultDesc: "Accepted",
-      status: transaction?.status ?? "ignored",
+      status: update.transaction?.status ?? "ignored",
     });
   }));
 
@@ -109,8 +115,9 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
   });
 
   app.post("/c2b/confirmation", asyncRoute(async (req, res) => {
-    const transaction = recordC2BConfirmation(ctx.store, req.body);
-    res.json({ ResultCode: 0, ResultDesc: "Accepted", status: transaction.status });
+    const update = recordC2BConfirmation(ctx.store, req.body);
+    if (update.becameSuccess && update.transaction) await notifyPaid(options.sms, update.transaction);
+    res.json({ ResultCode: 0, ResultDesc: "Accepted", status: update.transaction?.status ?? "ignored" });
   }));
 
   app.post("/b2c", guard, asyncRoute(async (req, res) => {
@@ -126,12 +133,37 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
     res.status(result.data.replayed === true ? 200 : 201).json(result.data);
   }));
 
-  app.post("/b2c/result", resultRoute(ctx, false));
-  app.post("/b2c/timeout", resultRoute(ctx, true));
-  app.post("/balance/result", resultRoute(ctx, false));
-  app.post("/balance/timeout", resultRoute(ctx, true));
-  app.post("/reversal/result", resultRoute(ctx, false));
-  app.post("/reversal/timeout", resultRoute(ctx, true));
+  app.post("/b2c/result", resultRoute(ctx, options.sms, false));
+  app.post("/b2c/timeout", resultRoute(ctx, options.sms, true));
+  app.post("/balance/result", resultRoute(ctx, options.sms, false));
+  app.post("/balance/timeout", resultRoute(ctx, options.sms, true));
+  app.post("/reversal/result", resultRoute(ctx, options.sms, false));
+  app.post("/reversal/timeout", resultRoute(ctx, options.sms, true));
+
+  app.post("/ussd", asyncRoute(async (req, res) => {
+    const step = ussdStep(readUssd(req.body), ctx.client?.settings.amountCap ?? 10_000);
+    if (step.type === "pay") {
+      try {
+        await callTool(
+          "stk_push",
+          {
+            phone: step.phone,
+            amount: step.amount,
+            accountReference: "USSD",
+            transactionDesc: "USSD pay",
+            confirm: true,
+          },
+          ctx
+        );
+        res.type("text/plain").send(ussdResponse({ type: "end", message: step.message }));
+      } catch (err) {
+        const message = err instanceof DarajaError ? err.message : "Payment could not be sent";
+        res.type("text/plain").send(ussdResponse({ type: "end", message }));
+      }
+      return;
+    }
+    res.type("text/plain").send(ussdResponse(step));
+  }));
 
   const handleError: ErrorRequestHandler = (err, _req, res, _next) => {
     if (err instanceof DarajaError) {
@@ -148,13 +180,14 @@ export function createApp(ctx: ToolContext, options: AppOptions): express.Expres
   return app;
 }
 
-function resultRoute(ctx: ToolContext, timeout: boolean) {
+function resultRoute(ctx: ToolContext, sms: SmsClient | undefined, timeout: boolean) {
   return asyncRoute(async (req, res) => {
-    const transaction = applyCommandResult(ctx.store, req.body, timeout);
+    const update = applyCommandResult(ctx.store, req.body, timeout);
+    if (update.becameSuccess && update.transaction) await notifyPaid(sms, update.transaction);
     res.json({
       ResultCode: 0,
       ResultDesc: "Accepted",
-      status: transaction?.status ?? "ignored",
+      status: update.transaction?.status ?? "ignored",
     });
   });
 }

@@ -4,13 +4,15 @@ import { parseCommandResult } from "../daraja/result";
 import { statusFromResult } from "../daraja/result-codes";
 import { newTransactionId, type Transaction, type TransactionStore } from "../store/transactions";
 
-export function applyStkCallback(
-  store: TransactionStore,
-  body: unknown
-): Transaction | undefined {
+export interface AppliedUpdate {
+  transaction?: Transaction;
+  becameSuccess: boolean;
+}
+
+export function applyStkCallback(store: TransactionStore, body: unknown): AppliedUpdate {
   const parsed = parseCallback(body);
   const existing = store.findByCheckout(parsed.checkoutRequestId);
-  if (!existing) return undefined;
+  if (!existing) return { becameSuccess: false };
   const next = statusFromResult(parsed.resultCode);
   const updated: Transaction = {
     ...existing,
@@ -21,14 +23,14 @@ export function applyStkCallback(
     receipt: parsed.receipt ?? existing.receipt,
   };
   store.save(updated);
-  return updated;
+  return { transaction: updated, becameSuccess: existing.status !== "success" && updated.status === "success" };
 }
 
-export function recordC2BConfirmation(store: TransactionStore, body: unknown): Transaction {
+export function recordC2BConfirmation(store: TransactionStore, body: unknown): AppliedUpdate {
   const notice = parseC2B(body);
   const idempotencyKey = `c2b:${notice.transId}`;
   const existing = store.findByIdempotency(idempotencyKey);
-  if (existing) return existing;
+  if (existing) return { transaction: existing, becameSuccess: false };
   const reference = notice.billRef.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 12) || "C2B";
   const created: Transaction = {
     id: newTransactionId(),
@@ -45,19 +47,21 @@ export function recordC2BConfirmation(store: TransactionStore, body: unknown): T
     createdAt: new Date().toISOString(),
   };
   store.insert(created);
-  return created;
+  return { transaction: created, becameSuccess: true };
 }
 
 export function applyCommandResult(
   store: TransactionStore,
   body: unknown,
   timeout: boolean
-): Transaction | undefined {
+): AppliedUpdate {
   const parsed = parseCommandResult(body);
   const id = parsed.conversationId || parsed.originatorConversationId;
-  if (!id) return undefined;
+  if (!id) return { becameSuccess: false };
   const existing = store.findByConversation(id);
-  if (!existing || existing.status !== "pending") return existing;
+  if (!existing || existing.status !== "pending") {
+    return { transaction: existing, becameSuccess: false };
+  }
   const next = timeout
     ? "failed"
     : parsed.resultCode === undefined
@@ -71,5 +75,5 @@ export function applyCommandResult(
     receipt: parsed.receipt ?? existing.receipt,
   };
   store.save(updated);
-  return updated;
+  return { transaction: updated, becameSuccess: updated.status === "success" };
 }

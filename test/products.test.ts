@@ -88,8 +88,10 @@ describe("Daraja products", () => {
     };
     const stored = recordC2BConfirmation(ctx.store, notice);
     const duplicate = recordC2BConfirmation(ctx.store, notice);
-    assert.equal(stored.id, duplicate.id);
-    assert.equal(stored.receipt, "C2B123");
+    assert.equal(stored.transaction?.id, duplicate.transaction?.id);
+    assert.equal(stored.becameSuccess, true);
+    assert.equal(duplicate.becameSuccess, false);
+    assert.equal(stored.transaction?.receipt, "C2B123");
     assert.equal(ctx.store.list().filter((tx) => tx.kind === "c2b").length, 1);
   });
 
@@ -102,7 +104,8 @@ describe("Daraja products", () => {
       { Result: { ConversationID: "someone-else", ResultCode: 0, ResultDesc: "ok" } },
       false
     );
-    assert.equal(unknown, undefined);
+    assert.equal(unknown.transaction, undefined);
+    assert.equal(unknown.becameSuccess, false);
     const updated = applyCommandResult(
       ctx.store,
       {
@@ -115,15 +118,16 @@ describe("Daraja products", () => {
       },
       false
     );
-    assert.equal(updated?.status, "success");
-    assert.equal(updated?.receipt, "BAL1");
+    assert.equal(updated.transaction?.status, "success");
+    assert.equal(updated.transaction?.receipt, "BAL1");
+    assert.equal(updated.becameSuccess, true);
 
     const timedOut = applyCommandResult(
       ctx.store,
       { Result: { ConversationID: "not-pending", ResultCode: 0 } },
       true
     );
-    assert.equal(timedOut, undefined);
+    assert.equal(timedOut.transaction, undefined);
   });
 
   it("queries a pending STK push after the callback window", async () => {

@@ -73,10 +73,19 @@ const accepted = await daraja.stkPush({
 | `POST` | `/b2c` | Payout. Requires the API key and `confirm: true` |
 | `POST` | `/balance` | Account balance request. The figure arrives on `/balance/result` |
 | `POST` | `/reversal` | Reverse a receipt. Requires the API key and `confirm: true` |
+| `POST` | `/ussd` | Africa's Talking session. Asks for an amount, then sends the STK push |
 
 `AccountReference` is at most 12 letters or digits. `TransactionDesc` is at most 13 characters. A missing confirmation returns `409` and does not call Daraja. A missing API key returns `401`.
 
 The ledger is SQLite at `data/daraja.sqlite` unless `MPESA_DB_PATH` is set. It stores the idempotency key, checkout id, receipt, result code, and a masked phone alongside the full number. If a callback has not arrived after `MPESA_QUERY_AFTER_MS` (default 30 seconds), the server queries Daraja. Result code `4999` stays pending.
+
+## Africa's Talking
+
+SMS and USSD sit beside Daraja. They do not collect the money. Set `AT_USERNAME` and `AT_API_KEY` to turn them on. Leave them blank and the server stays Daraja-only.
+
+When a ledger row first becomes successful, the server sends `Confirmed. KES 500. Receipt RCPT1.` to that phone. A repeated callback does not send a second SMS. The Africa's Talking key is not written into the ledger or the Daraja request.
+
+`POST /ussd` is the Africa's Talking callback. The first screen asks for the amount. The next screen sends the STK push to the handset that opened the session. Point the Africa's Talking USSD product at `https://<your-tunnel>/ussd`. USSD needs a short code from Africa's Talking. Sandbox SMS does not.
 
 ## Sandbox payment
 

@@ -1,3 +1,4 @@
+import { createSmsClient, loadAtConfig, notifyPaid } from "./africastalking/sms";
 import { createDarajaClient } from "./daraja/client";
 import { loadConfig, loadServerSettings } from "./daraja/config";
 import { createApp } from "./http/app";
@@ -11,11 +12,14 @@ const ctx: ToolContext = {
   client: createDarajaClient(config),
   store: createSqliteStore(server.dbPath),
 };
+const at = loadAtConfig();
+const sms = at ? createSmsClient(at) : undefined;
 ctx.onStkAccepted = (checkoutRequestId) => {
   watchPendingStk(ctx, checkoutRequestId, server.queryAfterMs);
 };
+ctx.onPaid = (tx) => notifyPaid(sms, tx);
 
-const app = createApp(ctx, { apiKey: server.apiKey });
+const app = createApp(ctx, { apiKey: server.apiKey, sms });
 const port = Number(process.env.PORT || 5001);
 
 app.listen(port, () => {
