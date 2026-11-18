@@ -9,7 +9,7 @@ async function main(): Promise<void> {
   const confirm = process.argv.includes("--confirm");
   const message = process.argv.slice(2).filter((arg) => arg !== "--confirm").join(" ").trim();
   if (!message) {
-    console.error('Usage: npm run agent -- "Send KES 500 to 0712345678 for January chama"');
+    console.error('Usage: pnpm agent -- "Send KES 500 to 0712345678 for January chama"');
     process.exitCode = 1;
     return;
   }

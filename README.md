@@ -15,13 +15,13 @@ The library is the part to import. The server and the agent are the reference fo
 ## Setup
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env
-npm test
-npm start
+pnpm test
+pnpm start
 ```
 
-`npm start` watches `src/server.ts`. `npm run build` then `npm run serve` runs the compiled server. The default port is `5001`.
+`pnpm start` watches `src/server.ts`. `pnpm build` then `pnpm serve` runs the compiled server. The default port is `5001`.
 
 ## Callback URL
 
@@ -75,8 +75,8 @@ The ledger is `data/transactions.json` unless `MPESA_STORE_PATH` is set.
 Without `AGENT_API_KEY`, a built-in planner handles a fixed set of English and Kiswahili phrases. With an OpenAI-compatible key, the model may choose tools, but it still cannot set `confirm`. Only the caller can.
 
 ```bash
-npm run agent -- "Nitumie stk ya mia tano kwa 0712345678"
-npm run agent -- --confirm "Send KES 500 to 0712345678 for January chama"
+pnpm agent -- "Nitumie stk ya mia tano kwa 0712345678"
+pnpm agent -- --confirm "Send KES 500 to 0712345678 for January chama"
 ```
 
 The first command prints a confirmation in English and Kiswahili. The second sends the prompt only when `.env` is filled in.
@@ -84,24 +84,24 @@ The first command prints a confirmation in English and Kiswahili. The second sen
 Examples, all safe to run with no credentials:
 
 ```bash
-npm run example:chama
-npm run example:school
-npm run example:till
-npm run example:subscription
+pnpm example:chama
+pnpm example:school
+pnpm example:till
+pnpm example:subscription
 ```
 
 Add `--confirm` to send a sandbox push. The subscription example uses a monthly idempotency key so the same month is not charged twice. The till example uses `CustomerBuyGoodsOnline`.
 
 ## MCP
 
-`npm run mcp` speaks MCP over stdin and stdout. Point a coding agent at it:
+`pnpm mcp` speaks MCP over stdin and stdout. Point a coding agent at it:
 
 ```json
 {
   "mcpServers": {
     "daraja": {
-      "command": "npm",
-      "args": ["run", "mcp"],
+      "command": "pnpm",
+      "args": ["mcp"],
       "cwd": "/absolute/path/to/this/repo"
     }
   }
@@ -117,8 +117,8 @@ Tools: `normalize_phone`, `stk_push`, `query_stk`, `explain_result`, `list_trans
 ## Tests
 
 ```bash
-npm test
-npm run build
+pnpm test
+pnpm build
 ```
 
 Tests use a fake HTTP client. They do not call Safaricom. The phrases in `src/agent/evals.ts` must keep producing the same phone, amount, and confirmation behaviour.

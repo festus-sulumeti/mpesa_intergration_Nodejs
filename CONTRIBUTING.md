@@ -1,8 +1,8 @@
 # Contributing
 
-Run `npm install`, copy `.env.example` to `.env` only on your machine, then `npm test`.
+Run `pnpm install`, copy `.env.example` to `.env` only on your machine, then `pnpm test`.
 
-CI runs `npm test` and `npm run build`. Do not put Daraja keys in the workflow, the tests, or the git history. A new Daraja call needs a fake HTTP response in the test, not a live sandbox request.
+CI runs `pnpm test` and `pnpm build`. Do not put Daraja keys in the workflow, the tests, or the git history. A new Daraja call needs a fake HTTP response in the test, not a live sandbox request.
 
 To add a product such as C2B, B2C, balance, or reversal:
 
