@@ -10,11 +10,14 @@ import {
   type TransactionStore,
 } from "../store/transactions";
 
+export type PaidHandler = (tx: Transaction) => void | Promise<void>;
+
 export interface ToolContext {
   client?: DarajaClient;
   store: TransactionStore;
   now?: () => Date;
   onStkAccepted?: (checkoutRequestId: string) => void;
+  onPaid?: PaidHandler;
 }
 
 export interface ToolResult {
@@ -284,6 +287,7 @@ async function query(
       resultDesc: result.resultDesc,
     };
     ctx.store.save(transaction);
+    if (transaction.status === "success") await ctx.onPaid?.(transaction);
   }
   return {
     resultCode: result.resultCode,

@@ -16,5 +16,7 @@ export { callTool, toolDefinitions } from "./agent/tools";
 export { planMessage } from "./agent/plan";
 export { runAgent } from "./agent/run";
 export { agentEvals } from "./agent/evals";
+export { createSmsClient, loadAtConfig, receiptMessage } from "./africastalking/sms";
+export { ussdStep, readUssd } from "./africastalking/ussd";
 export { createApp } from "./http/app";
 export { handleMcpMessage } from "./mcp/protocol";
