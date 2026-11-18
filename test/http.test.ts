@@ -8,7 +8,7 @@ import { testContext } from "./helpers";
 
 describe("reference server", () => {
   const { ctx, calls } = testContext();
-  const app = createApp(ctx);
+  const app = createApp(ctx, { apiKey: "test-key" });
   let server: Server;
   let base: string;
 
@@ -29,6 +29,11 @@ describe("reference server", () => {
     assert.equal(response.body.env, "sandbox");
     assert.equal(JSON.stringify(response.body).includes("consumer-secret"), false);
     assert.equal(JSON.stringify(response.body).includes("consumer-key"), false);
+  });
+
+  it("rejects a protected route without the API key", async () => {
+    const response = await request("/transactions", { auth: false });
+    assert.equal(response.status, 401);
   });
 
   it("holds an STK push until it is confirmed", async () => {
@@ -80,6 +85,26 @@ describe("reference server", () => {
     const listed = await request("/transactions");
     assert.equal(listed.body.transactions[0].receipt, "RCPT1");
     assert.equal(listed.body.transactions[0].status, "success");
+
+    const unknown = await request("/callback", {
+      method: "POST",
+      body: {
+        Body: {
+          stkCallback: {
+            MerchantRequestID: "merchant-x",
+            CheckoutRequestID: "ws_CO_unknown",
+            ResultCode: 0,
+            ResultDesc: "ok",
+          },
+        },
+      },
+    });
+    assert.equal(unknown.body.status, "ignored");
+    const after = await request("/transactions");
+    assert.equal(
+      after.body.transactions.some((tx: { checkoutRequestId?: string }) => tx.checkoutRequestId === "ws_CO_unknown"),
+      false
+    );
   });
 
   it("answers the Swahili agent in both languages without sending money", async () => {
@@ -94,10 +119,13 @@ describe("reference server", () => {
     assert.equal(calls.length, beforeCalls);
   });
 
-  async function request(path: string, options?: { method?: string; body?: unknown }) {
+  async function request(path: string, options?: { method?: string; body?: unknown; auth?: boolean }) {
+    const headers: Record<string, string> = {};
+    if (options?.auth !== false) headers["x-api-key"] = "test-key";
+    if (options?.body) headers["content-type"] = "application/json";
     const response = await fetch(`${base}${path}`, {
       method: options?.method ?? "GET",
-      headers: options?.body ? { "content-type": "application/json" } : undefined,
+      headers,
       body: options?.body ? JSON.stringify(options.body) : undefined,
     });
     return { status: response.status, body: await response.json() as Record<string, any> };
@@ -109,7 +137,17 @@ describe("MCP tools", () => {
     const { ctx, calls } = testContext();
     const listed = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, ctx);
     const names = ((listed?.result as { tools: Array<{ name: string }> }).tools).map((tool) => tool.name);
-    assert.deepEqual(names, ["normalize_phone", "stk_push", "query_stk", "explain_result", "list_transactions"]);
+    assert.deepEqual(names, [
+      "normalize_phone",
+      "stk_push",
+      "query_stk",
+      "explain_result",
+      "list_transactions",
+      "register_c2b",
+      "b2c_payment",
+      "account_balance",
+      "reversal",
+    ]);
 
     const blocked = await handleMcpMessage({
       jsonrpc: "2.0",

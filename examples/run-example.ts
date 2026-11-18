@@ -10,12 +10,12 @@ export async function runExample(input: AgentInput): Promise<void> {
 
   const { createDarajaClient } = await import("../src/daraja/client");
   const { loadConfig } = await import("../src/daraja/config");
-  const { createFileStore } = await import("../src/store/transactions");
+  const { createSqliteStore } = await import("../src/store/sqlite");
   const result = await runAgent(
     { ...input, confirm: true },
     {
       client: createDarajaClient(loadConfig()),
-      store: createFileStore(process.env.MPESA_STORE_PATH || "data/transactions.json"),
+      store: createSqliteStore(process.env.MPESA_DB_PATH || "data/daraja.sqlite"),
     }
   );
   console.log(JSON.stringify(result, null, 2));

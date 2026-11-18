@@ -1,9 +1,9 @@
 import { createDarajaClient } from "../daraja/client";
 import { loadConfig } from "../daraja/config";
-import { createFileStore } from "../store/transactions";
+import { createSqliteStore } from "../store/sqlite";
 import { startMcpServer } from "./protocol";
 
-const store = createFileStore(process.env.MPESA_STORE_PATH || "data/transactions.json");
+const store = createSqliteStore(process.env.MPESA_DB_PATH || "data/daraja.sqlite");
 
 try {
   startMcpServer({ client: createDarajaClient(loadConfig()), store });

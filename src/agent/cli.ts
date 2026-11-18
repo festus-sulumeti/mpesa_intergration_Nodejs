@@ -1,7 +1,7 @@
 import { planMessage } from "./plan";
 import { createDarajaClient } from "../daraja/client";
 import { loadConfig } from "../daraja/config";
-import { createFileStore } from "../store/transactions";
+import { createSqliteStore } from "../store/sqlite";
 import { openAiComplete } from "./llm";
 import { runAgent } from "./run";
 
@@ -15,8 +15,11 @@ async function main(): Promise<void> {
   }
 
   const plan = planMessage(message);
-  const store = createFileStore(process.env.MPESA_STORE_PATH || "data/transactions.json");
-  const needsDaraja = plan.intent === "query" || (plan.intent === "stk" && confirm);
+  const store = createSqliteStore(process.env.MPESA_DB_PATH || "data/daraja.sqlite");
+  const needsDaraja =
+    plan.intent === "query" ||
+    plan.intent === "balance" ||
+    ((plan.intent === "stk" || plan.intent === "reversal") && confirm);
   const client = needsDaraja ? createDarajaClient(loadConfig()) : undefined;
   const llm =
     confirm && process.env.AGENT_API_KEY
@@ -28,7 +31,7 @@ async function main(): Promise<void> {
       : undefined;
 
   const result = await runAgent(
-    { message, confirm: confirm && plan.intent === "stk", llm },
+    { message, confirm: confirm && (plan.intent === "stk" || plan.intent === "reversal"), llm },
     { client, store }
   );
   console.log(JSON.stringify(result, null, 2));

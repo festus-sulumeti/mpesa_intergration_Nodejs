@@ -23,6 +23,8 @@ pnpm start
 
 `pnpm start` watches `src/server.ts`. `pnpm build` then `pnpm serve` runs the compiled server. The default port is `5001`.
 
+Set `MPESA_API_KEY` before starting the server. `POST /stk`, `POST /agent`, `POST /b2c`, `POST /reversal`, `POST /balance`, `POST /c2b/register`, and the transaction reads require that key in the `x-api-key` header or as `Authorization: Bearer`. Daraja callbacks stay open and only update a checkout or conversation this server created.
+
 ## Callback URL
 
 Daraja calls you after the customer accepts or cancels. The URL has to be public HTTPS.
@@ -60,15 +62,69 @@ const accepted = await daraja.stkPush({
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Service description, with no secrets |
-| `POST` | `/stk` | STK push. Refuses the call until `confirm` is `true` |
-| `POST` | `/callback` | Daraja STK callback. Updates the local ledger |
-| `GET` | `/stk/:checkoutRequestId` | Query Daraja and update the ledger |
-| `GET` | `/transactions` | Ledger, newest first |
+| `POST` | `/stk` | STK push. Requires the API key and `confirm: true` |
+| `POST` | `/callback` | Daraja STK callback. Updates a checkout this server created |
+| `GET` | `/stk/:checkoutRequestId` | Query Daraja and update a pending ledger row |
+| `GET` | `/transactions` | Ledger, newest first. Requires the API key |
 | `POST` | `/agent` | `{ "message": "Send KES 500 to 0712345678 for January chama" }` |
+| `POST` | `/c2b/register` | Register validation and confirmation URLs. Requires `confirm: true` |
+| `POST` | `/c2b/validation` | Open to Daraja. Accepts a well-formed paybill check |
+| `POST` | `/c2b/confirmation` | Open to Daraja. Stores the payment once per `TransID` |
+| `POST` | `/b2c` | Payout. Requires the API key and `confirm: true` |
+| `POST` | `/balance` | Account balance request. The figure arrives on `/balance/result` |
+| `POST` | `/reversal` | Reverse a receipt. Requires the API key and `confirm: true` |
 
-`AccountReference` is at most 12 letters or digits. `TransactionDesc` is at most 13 characters. A missing confirmation returns `409` and does not call Daraja.
+`AccountReference` is at most 12 letters or digits. `TransactionDesc` is at most 13 characters. A missing confirmation returns `409` and does not call Daraja. A missing API key returns `401`.
 
-The ledger is `data/transactions.json` unless `MPESA_STORE_PATH` is set.
+The ledger is SQLite at `data/daraja.sqlite` unless `MPESA_DB_PATH` is set. It stores the idempotency key, checkout id, receipt, result code, and a masked phone alongside the full number. If a callback has not arrived after `MPESA_QUERY_AFTER_MS` (default 30 seconds), the server queries Daraja. Result code `4999` stays pending.
+
+## Sandbox payment
+
+Use the sandbox test MSISDN from the Daraja portal. The usual one is `254708374149`.
+
+```bash
+cloudflared tunnel --url http://localhost:5001
+# set MPESA_CALLBACK_URL=https://<host>.trycloudflare.com/callback
+pnpm start
+```
+
+```bash
+curl -sS -X POST http://127.0.0.1:5001/stk \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: choose-a-long-random-string' \
+  -d '{"phone":"254708374149","amount":1,"accountReference":"SANDBOX","transactionDesc":"One shilling","confirm":true}'
+```
+
+Approve the prompt on the phone. Daraja then calls `POST /callback`. Read the ledger and look for the receipt:
+
+```bash
+curl -sS http://127.0.0.1:5001/transactions \
+  -H 'x-api-key: choose-a-long-random-string'
+```
+
+If the row is still pending after the callback window, the server queries Daraja on its own.
+
+## Install the client
+
+This repository's package name is `mpesa-daraja`. Build it, then publish when you are ready:
+
+```bash
+pnpm build
+pnpm publish --access public
+```
+
+Another app can then depend on the library without taking the reference server:
+
+```bash
+pnpm add mpesa-daraja
+```
+
+```ts
+import { createDarajaClient, createSqliteStore, loadConfig } from "mpesa-daraja";
+
+const daraja = createDarajaClient(loadConfig());
+const ledger = createSqliteStore("data/daraja.sqlite");
+```
 
 ## Agent
 

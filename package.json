@@ -1,11 +1,28 @@
 {
-  "name": "mpesa intergration",
+  "name": "mpesa-daraja",
   "version": "1.0.0",
   "description": "Typed Safaricom Daraja client, STK reference server, and a confirmation-gated payments agent",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/festus-sulumeti/mpesa_intergration_Nodejs.git"
+  },
   "scripts": {
     "test": "tsx --test test/**/*.test.ts",
     "build": "tsc",
+    "prepublishOnly": "pnpm run build",
     "start": "tsx watch src/server.ts",
     "serve": "node dist/server.js",
     "agent": "tsx src/agent/cli.ts",
@@ -15,7 +32,7 @@
     "example:till": "tsx examples/till.ts",
     "example:subscription": "tsx examples/subscription.ts"
   },
-  "keywords": [],
+  "keywords": ["mpesa", "daraja", "kenya", "stk", "lipa-na-mpesa"],
   "author": "Festus Sulumeti",
   "license": "ISC",
   "packageManager": "pnpm@12.5.1",

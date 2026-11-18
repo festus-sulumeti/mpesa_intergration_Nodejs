@@ -1,4 +1,4 @@
-export type PaymentOutcome = "success" | "cancelled" | "failed" | "unknown";
+export type PaymentOutcome = "success" | "cancelled" | "failed" | "pending" | "unknown";
 
 export interface ResultExplanation {
   code: number;
@@ -53,6 +53,11 @@ const CODES: Record<number, Omit<ResultExplanation, "code">> = {
     en: "The initiator information is invalid",
     sw: "Taarifa ya kuanzisha muamala si sahihi",
   },
+  4999: {
+    outcome: "pending",
+    en: "The transaction is still processing",
+    sw: "Muamala bado unaendelea",
+  },
   9999: {
     outcome: "failed",
     en: "The request failed",
@@ -71,9 +76,10 @@ export function explainResult(code: number): ResultExplanation {
   };
 }
 
-export function statusFromResult(code: number): "success" | "cancelled" | "failed" {
+export function statusFromResult(code: number): "success" | "cancelled" | "failed" | "pending" {
   const outcome = explainResult(code).outcome;
   if (outcome === "success") return "success";
   if (outcome === "cancelled") return "cancelled";
+  if (outcome === "pending") return "pending";
   return "failed";
 }

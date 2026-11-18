@@ -2,10 +2,17 @@ import { DarajaError } from "../daraja/errors";
 import { toAccountReference, toTransactionDesc } from "../daraja/money";
 import type { TransactionType } from "../daraja/client";
 
-export type PlanIntent = "stk" | "query" | "explain" | "list" | "unknown";
+export type PlanIntent = "stk" | "query" | "explain" | "list" | "balance" | "reversal" | "unknown";
 
 export interface PlanStep {
-  tool: "normalize_phone" | "stk_push" | "query_stk" | "explain_result" | "list_transactions";
+  tool:
+    | "normalize_phone"
+    | "stk_push"
+    | "query_stk"
+    | "explain_result"
+    | "list_transactions"
+    | "account_balance"
+    | "reversal";
   args: Record<string, unknown>;
 }
 
@@ -50,6 +57,18 @@ export function planMessage(message: string, defaults: PlanDefaults = {}): Plan 
 
   if (/\b(list transactions|show transactions|onyesha miamala)\b/i.test(lower)) {
     return { intent: "list", steps: [{ tool: "list_transactions", args: {} }] };
+  }
+
+  if (/\b(account balance|check balance|salio)\b/i.test(lower)) {
+    return { intent: "balance", steps: [{ tool: "account_balance", args: {} }] };
+  }
+
+  const reversal = /\b(?:reverse|reversal|rudisha)\s+([A-Za-z0-9]{6,})\b/i.exec(text);
+  if (reversal?.[1]) {
+    return {
+      intent: "reversal",
+      steps: [{ tool: "reversal", args: { receipt: reversal[1].toUpperCase(), confirm: false } }],
+    };
   }
 
   const checkout = /\b(ws_co_[a-z0-9_]+)\b/i.exec(text);
