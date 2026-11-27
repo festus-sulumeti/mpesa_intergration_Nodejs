@@ -2,6 +2,7 @@
 
 A TypeScript Daraja client, a small reference server, and a payments agent for Kenyan developers. The agent can normalize a phone number, explain a result code, and send an STK push only after a person sets `confirm=true`.
 
+
 The library is the part to import. The server and the agent are the reference for how to use it.
 
 ## Safety
