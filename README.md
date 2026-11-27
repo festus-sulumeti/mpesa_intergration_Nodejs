@@ -62,6 +62,7 @@ const accepted = await daraja.stkPush({
 
 `0712345678`, `0112345678`, `254712345678`, and `+254712345678` are normalized to `254…`. A value that would become `25407…` is rejected. Timestamps use `Africa/Nairobi`.
 
+
 ## HTTP API
 
 | Method | Path | Purpose |
