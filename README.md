@@ -1,5 +1,6 @@
 # Daraja Lipa na M-Pesa
 
+
 A TypeScript Daraja client, a small reference server, and a payments agent for Kenyan developers. The agent can normalize a phone number, explain a result code, and send an STK push only after a person sets `confirm=true`.
 
 
