@@ -31,6 +31,7 @@ Set `MPESA_API_KEY` before starting the server. `POST /stk`, `POST /agent`, `POS
 
 Daraja calls you after the customer accepts or cancels. The URL has to be public HTTPS.
 
+
 ```bash
 ngrok http 5001
 # MPESA_CALLBACK_URL=https://<id>.ngrok-free.app/callback
